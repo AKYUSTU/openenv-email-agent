@@ -1,0 +1,16 @@
+[project]
+name = "openenv-email-agent"
+version = "0.1.0"
+description = "OpenEnv environment for enterprise email triage"
+authors = [
+    {name = "Aniket Yadav"}
+]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "openai"
+]
+
+[tool.openenv]
+entry_point = "env.environment:EmailEnv"
