@@ -1,36 +1,47 @@
+from fastapi import FastAPI
+from pydantic import BaseModel
 from env.environment import EmailEnv
 
-def run_task(task):
-    env = EmailEnv(task)
+app = FastAPI()
+
+env = EmailEnv("easy")  # default
+
+# ------------------ MODELS ------------------
+
+class ActionModel(BaseModel):
+    action_type: str
+    category: str = None
+    priority: str = None
+    response: str = None
+
+# ------------------ OPENENV ENDPOINTS ------------------
+
+@app.post("/reset")
+def reset():
     obs = env.reset()
+    return {
+        "observation": obs,
+        "reward": 0.0,
+        "done": False,
+        "info": {}
+    }
 
-    total_reward = 0
-    done = False
+@app.post("/step")
+def step(action: ActionModel):
+    obs, reward, done, info = env.step(action.dict())
+    return {
+        "observation": obs,
+        "reward": reward,
+        "done": done,
+        "info": info
+    }
 
-    while not done:
-        action = {
-            "action_type": "reply",
-            "category": "support",
-            "priority": "high",
-            "response": "We are looking into your issue and will resolve it soon."
-        }
+@app.get("/state")
+def state():
+    return env.state()
 
-        obs, reward, done, info = env.step(action)
-        total_reward += reward
+# ------------------ HEALTH CHECK ------------------
 
-    return total_reward
-
-def main():
-    print("[START]")
-
-    for task in ["easy", "medium", "hard"]:
-        print(f"[STEP] Running {task}")
-
-        score = run_task(task)
-
-        print(f"[STEP] Score: {score}")
-
-    print("[END]")
-
-if __name__ == "__main__":
-    main()
+@app.get("/")
+def root():
+    return {"status": "running"}
