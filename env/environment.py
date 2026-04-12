@@ -1,44 +1,53 @@
-class EmailEnv:
+from env.tasks import load_task
+from env.grader import compute_reward
 
-    def __init__(self, task_name="easy"):
+class EmailEnv:
+    def __init__(self, task_name):
         self.task_name = task_name
-        self.reset()
+        self.task_data = load_task(task_name)
+
+        self.emails = self.task_data["emails"]
+        self.current_index = 0
+        self.history = []
 
     def reset(self):
-        from env.tasks import load_task
-        self.state_data = load_task(self.task_name)
         self.current_index = 0
-        self.total_reward = 0
         self.history = []
-        return self._get_obs()
 
-    def _get_obs(self):
-        email = self.state_data["emails"][self.current_index]
+        email = self.emails[self.current_index]
+
         return {
-            "email_id": email["id"],
             "subject": email["subject"],
             "body": email["body"],
             "history": self.history
         }
 
     def step(self, action):
-        from env.grader import compute_reward
+        email = self.emails[self.current_index]
 
-        email = self.state_data["emails"][self.current_index]
-
+        # ✅ compute reward
         reward = compute_reward(email, action)
-        self.total_reward += reward
 
-        self.history.append(f"Handled email {email['id']}")
+        # ✅ store history
+        self.history.append({
+            "email_id": email["id"],
+            "action": action
+        })
 
+        # ✅ move to next email
         self.current_index += 1
-        done = self.current_index >= len(self.state_data["emails"])
 
-        obs = None if done else self._get_obs()
+        done = self.current_index >= len(self.emails)
 
-        return obs, reward, done, {
-            "total_reward": self.total_reward
-        }
+        if not done:
+            next_email = self.emails[self.current_index]
 
-    def state(self):
-        return self.state_data
+            observation = {
+                "subject": next_email["subject"],
+                "body": next_email["body"],
+                "history": self.history
+            }
+        else:
+            observation = {}
+
+        return observation, reward, done, {}
