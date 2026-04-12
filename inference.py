@@ -1,39 +1,22 @@
 import os
 import json
-import threading
-from fastapi import FastAPI
 from openai import OpenAI
 from env.environment import EmailEnv
 
-# ✅ MUST use environment variables (validator requirement)
+# ✅ MUST use these
 client = OpenAI(
     base_url=os.environ["API_BASE_URL"],
     api_key=os.environ["API_KEY"]
 )
 
-app = FastAPI()
-
-# 🔥 FINAL FIXED LLM FUNCTION (NO FALLBACK SKIP)
 def get_llm_action(obs):
-    history_text = "\n".join(obs["history"])
-
     prompt = f"""
-    You are a professional enterprise email assistant.
+    Classify this email and respond in JSON.
 
-    Past actions:
-    {history_text}
-
-    Analyze this email:
     Subject: {obs['subject']}
     Body: {obs['body']}
 
-    Decide:
-    - category (support, spam, business, legal, security)
-    - priority (low, medium, high)
-    - action_type (reply, escalate, ignore)
-    - response
-
-    Return ONLY JSON:
+    Return JSON:
     {{
         "action_type": "...",
         "category": "...",
@@ -42,7 +25,7 @@ def get_llm_action(obs):
     }}
     """
 
-    # ✅ FORCE API CALL (this is what validator checks)
+    # 🔥 FORCE API CALL
     response = client.chat.completions.create(
         model=os.environ["MODEL_NAME"],
         messages=[{"role": "user", "content": prompt}]
@@ -50,13 +33,11 @@ def get_llm_action(obs):
 
     text = response.choices[0].message.content
 
-    # ✅ ALWAYS USE OUTPUT (no skipping)
     try:
         action = json.loads(text)
     except:
         action = {}
 
-    # ✅ GUARANTEE STRUCTURE (prevents crash but still uses LLM output)
     return {
         "action_type": action.get("action_type", "reply"),
         "category": action.get("category", "support"),
@@ -64,8 +45,7 @@ def get_llm_action(obs):
         "response": action.get("response", text[:100])
     }
 
-# 🚀 MAIN EXECUTION LOOP
-def run_env():
+def run():
     print("[START]")
 
     for task in ["easy", "medium", "hard"]:
@@ -78,19 +58,13 @@ def run_env():
         done = False
 
         while not done:
-            action = get_llm_action(obs)  # ✅ LLM used here
-
-            obs, reward, done, info = env.step(action)
+            action = get_llm_action(obs)
+            obs, reward, done, _ = env.step(action)
             total_reward += reward
 
         print(f"[STEP] Score: {total_reward}")
 
     print("[END]")
 
-# ✅ RUN IN BACKGROUND (HF requirement)
-threading.Thread(target=run_env).start()
-
-# ✅ KEEP SERVER ALIVE (HF health check)
-@app.get("/")
-def root():
-    return {"status": "running"}
+if __name__ == "__main__":
+    run()
