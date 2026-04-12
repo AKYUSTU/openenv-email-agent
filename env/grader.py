@@ -1,17 +1,23 @@
 def compute_reward(email, action):
     reward = 0.0
 
-    # category correctness
-    if action.get("category") == email["true_category"]:
-        reward += 0.25
+    # category
+    if action.get("category") == email.get("true_category"):
+        reward += 0.2
+    else:
+        reward -= 0.1
 
-    # priority correctness
-    if action.get("priority") == email["true_priority"]:
-        reward += 0.25
+    # priority
+    if action.get("priority") == email.get("true_priority"):
+        reward += 0.2
+    else:
+        reward -= 0.1
 
-    # correct decision (reply / escalate / ignore)
-    if action.get("action_type") == email["expected_action"]:
+    # action correctness
+    if action.get("action_type") == email.get("expected_action"):
         reward += 0.3
+    else:
+        reward -= 0.2
 
     # response quality
     if action.get("response"):
@@ -20,8 +26,11 @@ def compute_reward(email, action):
         else:
             reward -= 0.1
 
-    # penalty for wrong critical action
-    if email["true_priority"] == "high" and action.get("action_type") == "ignore":
+    # critical penalty
+    if email.get("true_priority") == "high" and action.get("action_type") == "ignore":
         reward -= 0.5
+
+    # small reward for completion
+    reward += 0.05
 
     return max(0.0, min(reward, 1.0))
