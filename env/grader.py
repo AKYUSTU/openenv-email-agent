@@ -31,4 +31,4 @@ def compute_reward(email, action):
 
     reward += 0.05
 
-    return max(0.0, min(reward, 1.0))
+    return max(0.01, min(reward, 0.99))
