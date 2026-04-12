@@ -5,7 +5,6 @@ from fastapi import FastAPI
 from openai import OpenAI
 from env.environment import EmailEnv
 
-# ✅ Initialize client using PROVIDED ENV VARIABLES (MANDATORY)
 client = OpenAI(
     base_url=os.environ["API_BASE_URL"],
     api_key=os.environ["API_KEY"]
@@ -13,22 +12,32 @@ client = OpenAI(
 
 app = FastAPI()
 
-# 🔥 LLM ACTION FUNCTION (MANDATORY FOR VALIDATION)
 def get_llm_action(obs):
+    history_text = "\n".join(obs["history"])
+
     prompt = f"""
     You are a professional enterprise email assistant.
 
-    Analyze the email carefully and decide:
+    Past actions:
+    {history_text}
+
+    Analyze this email:
+    Subject: {obs['subject']}
+    Body: {obs['body']}
+
+    Decide:
     - category (support, spam, business, legal, security)
     - priority (low, medium, high)
     - action_type (reply, escalate, ignore)
     - response
 
-    Return ONLY JSON.
-
-    Email:
-    Subject: {obs['subject']}
-    Body: {obs['body']}
+    Return ONLY JSON:
+    {{
+        "action_type": "...",
+        "category": "...",
+        "priority": "...",
+        "response": "..."
+    }}
     """
 
     try:
@@ -38,14 +47,9 @@ def get_llm_action(obs):
         )
 
         text = response.choices[0].message.content
-
-        # Try parsing JSON
-        action = json.loads(text)
-
-        return action
+        return json.loads(text)
 
     except Exception:
-        # Fallback (IMPORTANT to avoid crashes)
         return {
             "action_type": "reply",
             "category": "support",
@@ -53,7 +57,6 @@ def get_llm_action(obs):
             "response": "We are reviewing your request."
         }
 
-# 🚀 MAIN ENV RUNNER
 def run_env():
     print("[START]")
 
@@ -68,7 +71,6 @@ def run_env():
 
         while not done:
             action = get_llm_action(obs)
-
             obs, reward, done, info = env.step(action)
             total_reward += reward
 
@@ -76,10 +78,8 @@ def run_env():
 
     print("[END]")
 
-# 🔥 RUN IN BACKGROUND (so server stays alive)
 threading.Thread(target=run_env).start()
 
-# ✅ REQUIRED FOR HUGGING FACE HEALTH CHECK
 @app.get("/")
 def root():
     return {"status": "running"}
