@@ -1,14 +1,19 @@
 import os
 import json
+import threading
+from fastapi import FastAPI
 from openai import OpenAI
 from env.environment import EmailEnv
 
-# ✅ MUST use these
+# ✅ LLM CLIENT (MANDATORY)
 client = OpenAI(
     base_url=os.environ["API_BASE_URL"],
     api_key=os.environ["API_KEY"]
 )
 
+app = FastAPI()
+
+# 🔥 LLM FUNCTION (NO SKIP)
 def get_llm_action(obs):
     prompt = f"""
     Classify this email and respond in JSON.
@@ -25,7 +30,6 @@ def get_llm_action(obs):
     }}
     """
 
-    # 🔥 FORCE API CALL
     response = client.chat.completions.create(
         model=os.environ["MODEL_NAME"],
         messages=[{"role": "user", "content": prompt}]
@@ -45,7 +49,8 @@ def get_llm_action(obs):
         "response": action.get("response", text[:100])
     }
 
-def run():
+# 🚀 RUN ENV (FOR VALIDATION LOGS)
+def run_env():
     print("[START]")
 
     for task in ["easy", "medium", "hard"]:
@@ -66,5 +71,27 @@ def run():
 
     print("[END]")
 
-if __name__ == "__main__":
-    run()
+# 🔥 RUN IN BACKGROUND
+threading.Thread(target=run_env).start()
+
+# ✅ OPENENV-LIKE ENDPOINTS (CRITICAL)
+env_instance = EmailEnv("easy")
+
+@app.post("/reset")
+def reset():
+    obs = env_instance.reset()
+    return obs
+
+@app.post("/step")
+def step(action: dict):
+    obs, reward, done, info = env_instance.step(action)
+    return {
+        "observation": obs,
+        "reward": reward,
+        "done": done,
+        "info": info
+    }
+
+@app.get("/")
+def root():
+    return {"status": "running"}
