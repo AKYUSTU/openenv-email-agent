@@ -41,3 +41,16 @@ Dense reward system evaluating:
 - Easy: ~0.7–0.8
 - Medium: ~0.5–0.6
 - Hard: ~0.4–0.5
+
+## Architecture
+
+Email → LLM → Decision → Environment → Reward → Loop
+
+## Why This Matters
+
+This system simulates real-world enterprise workflows such as:
+
+- Customer support automation  
+- Spam detection  
+- Business email routing  
+- Security escalation handling  
