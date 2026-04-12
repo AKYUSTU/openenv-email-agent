@@ -16,25 +16,19 @@ app = FastAPI()
 # 🔥 LLM ACTION FUNCTION (MANDATORY FOR VALIDATION)
 def get_llm_action(obs):
     prompt = f"""
-    You are an AI email assistant.
+    You are a professional enterprise email assistant.
+
+    Analyze the email carefully and decide:
+    - category (support, spam, business, legal, security)
+    - priority (low, medium, high)
+    - action_type (reply, escalate, ignore)
+    - response
+
+    Return ONLY JSON.
 
     Email:
     Subject: {obs['subject']}
     Body: {obs['body']}
-
-    Decide:
-    - category
-    - priority
-    - action_type (reply, escalate, ignore)
-    - response
-
-    Return ONLY valid JSON in this format:
-    {{
-        "action_type": "...",
-        "category": "...",
-        "priority": "...",
-        "response": "..."
-    }}
     """
 
     try:
