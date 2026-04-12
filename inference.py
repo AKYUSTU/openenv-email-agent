@@ -94,3 +94,20 @@ threading.Thread(target=run_env).start()
 @app.get("/")
 def root():
     return {"status": "running"}
+# 🔥 GLOBAL ENV INSTANCE (IMPORTANT)
+env_instance = EmailEnv("easy")
+
+@app.post("/reset")
+def reset():
+    obs = env_instance.reset()
+    return obs
+
+@app.post("/step")
+def step(action: dict):
+    obs, reward, done, info = env_instance.step(action)
+    return {
+        "observation": obs,
+        "reward": reward,
+        "done": done,
+        "info": info
+    }
