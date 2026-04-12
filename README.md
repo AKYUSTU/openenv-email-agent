@@ -1,23 +1,37 @@
-# Email Triage OpenEnv
+---
+title: openenv-email-agent
+emoji: 🤖
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_file: inference.py
+pinned: false
+---
 
-## Description
+# Smart Enterprise Email Operations Simulator (SEEOS)
 
-This environment simulates email handling in a company.
+## Overview
+This project simulates real-world enterprise email handling using an OpenEnv RL environment.
+
+## Real-World Applications
+- Customer support automation
+- Spam filtering
+- Business email routing
+- Security escalation systems
 
 ## Tasks
+- Easy: Basic classification
+- Medium: Multi-type emails
+- Hard: Legal, security, and critical cases
 
-- Easy: basic support email
-- Medium: ambiguous email
-- Hard: legal/critical email
+## Reward Design
+Dense reward system evaluating:
+- Classification accuracy
+- Priority detection
+- Action correctness
+- Response quality
 
-## Action Space
-
-- classify
-- reply
-- escalate
-- ignore
-
-## Setup
-
-docker build -t email-env .
-docker run email-env
+## Baseline Performance
+- Easy: ~0.7–0.8
+- Medium: ~0.5–0.6
+- Hard: ~0.4–0.5
