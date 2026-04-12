@@ -1,52 +1,66 @@
+import os
+import json
+import threading
 from fastapi import FastAPI
-from pydantic import BaseModel
+from openai import OpenAI
 from env.environment import EmailEnv
+
+# ✅ Initialize client using PROVIDED ENV VARIABLES (MANDATORY)
+client = OpenAI(
+    base_url=os.environ["API_BASE_URL"],
+    api_key=os.environ["API_KEY"]
+)
 
 app = FastAPI()
 
-env = EmailEnv("easy")
+# 🔥 LLM ACTION FUNCTION (MANDATORY FOR VALIDATION)
+def get_llm_action(obs):
+    prompt = f"""
+    You are an AI email assistant.
 
-# ------------------ MODELS ------------------
+    Email:
+    Subject: {obs['subject']}
+    Body: {obs['body']}
 
-class ActionModel(BaseModel):
-    action_type: str
-    category: str = None
-    priority: str = None
-    response: str = None
+    Decide:
+    - category
+    - priority
+    - action_type (reply, escalate, ignore)
+    - response
 
-# ------------------ OPENENV API ------------------
+    Return ONLY valid JSON in this format:
+    {{
+        "action_type": "...",
+        "category": "...",
+        "priority": "...",
+        "response": "..."
+    }}
+    """
 
-@app.post("/reset")
-def reset():
-    obs = env.reset()
-    return {
-        "observation": obs,
-        "reward": 0.0,
-        "done": False,
-        "info": {}
-    }
+    try:
+        response = client.chat.completions.create(
+            model=os.environ["MODEL_NAME"],
+            messages=[{"role": "user", "content": prompt}]
+        )
 
-@app.post("/step")
-def step(action: ActionModel):
-    obs, reward, done, info = env.step(action.dict())
-    return {
-        "observation": obs,
-        "reward": reward,
-        "done": done,
-        "info": info
-    }
+        text = response.choices[0].message.content
 
-@app.get("/state")
-def state():
-    return env.state()
+        # Try parsing JSON
+        action = json.loads(text)
 
-@app.get("/")
-def root():
-    return {"status": "running"}
+        return action
 
-# ------------------ BASELINE SCRIPT ------------------
+    except Exception:
+        # Fallback (IMPORTANT to avoid crashes)
+        return {
+            "action_type": "reply",
+            "category": "support",
+            "priority": "medium",
+            "response": "We are reviewing your request."
+        }
 
-def run_baseline():
+# 🚀 MAIN ENV RUNNER
+def run_env():
     print("[START]")
 
     for task in ["easy", "medium", "hard"]:
@@ -59,12 +73,7 @@ def run_baseline():
         done = False
 
         while not done:
-            action = {
-                "action_type": "reply",
-                "category": "support",
-                "priority": "high",
-                "response": "We are looking into your issue."
-            }
+            action = get_llm_action(obs)
 
             obs, reward, done, info = env.step(action)
             total_reward += reward
@@ -73,6 +82,10 @@ def run_baseline():
 
     print("[END]")
 
-# IMPORTANT: only runs locally, not in HF server
-if __name__ == "__main__":
-    run_baseline()
+# 🔥 RUN IN BACKGROUND (so server stays alive)
+threading.Thread(target=run_env).start()
+
+# ✅ REQUIRED FOR HUGGING FACE HEALTH CHECK
+@app.get("/")
+def root():
+    return {"status": "running"}
